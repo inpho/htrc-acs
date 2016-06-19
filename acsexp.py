@@ -535,41 +535,32 @@ if __name__ == '__main__':
     populate_parser(parser)
     args = parser.parse_args()
     
-    config = ConfigParser({
-        'certfile' : None,
-        'keyfile' : None,
-        'ca_certs' : None,
-        'ssl' : False,
-        'port' : '8000',
-        'host' : '0.0.0.0',
-        'topic_range' : '{0},{1},1'.format(args.k, args.k+1),
-        'icons': 'link',
-        'corpus_link' : None,
-        'doc_title_format' : None,
-        'doc_url_format' : None,
-        'topics': None})
+    config = ConfigParser()
     config.read(args.config)
 
     # path variables
     path = config.get('main', 'path')
     context_type = config.get('main', 'context_type')
     corpus_file = config.get('main', 'corpus_file')
-    model_pattern = config.get('main', 'model_pattern') 
 
     c = Corpus.load(corpus_file)
-    m = LdaCgsMulti.load(model_pattern.format(args.k))
-    v = LdaCgsViewer(c, m)
+    spanning_viewers = []
+    ids = []
 
-    ids = v.corpus.view_metadata('book')['book_label']
-    print "{} total books".format(len(ids))
+    from glob import iglob as glob
+    glob_path = args.conifg.replace('.ini', '.*')
+    for config_path in glob(glob_path):
+        config = ConfigParser()
+        config.read(config_path)
 
-    for i in range(args.self):
-        num_iter = args.iter
-        sample_m = LdaCgsSeq(c, 'book', args.k) # set num_topics parameter at top
-        sample_m.train(num_iter, verbose=0) # set num_iter at top
-        sample_v = LdaCgsViewer(c, sample_m)
+        model_pattern = config.get('main', 'model_pattern')
+        m = LdaCgsMulti.load(model_pattern.format(args.k))
+        v = LdaCgsViewer(c, m)
+        spanning_viewers.append(v)
 
-        compare(sample_v, v) 
+        if not ids:
+            ids = v.corpus.view_metadata('book')['book_label']
+            print "{} total books".format(len(ids))
 
 
     while True:
@@ -581,4 +572,6 @@ if __name__ == '__main__':
         sample_m = LdaCgsSeq(sample_c, 'book', args.k) # set num_topics parameter at top
         sample_m.train(num_iter, verbose=0) # set num_iter at top
         sample_v = LdaCgsViewer(sample_c, sample_m)
-        compare(sample_v, v) 
+
+        for v in spanning_viwers:
+            compare(sample_v, v)
