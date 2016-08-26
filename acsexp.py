@@ -18,7 +18,7 @@ import random
 
 
 import os.path
-from ConfigParser import ConfigParser
+from ConfigParser import ConfigParser, NoOptionError
 
 def is_valid_filepath(parser, arg):
     if not os.path.exists(arg):
@@ -56,8 +56,6 @@ def deep_subcorpus(labels):
     
     # reduce metadata to only the new subcorpus
     new_corpus.context_data[ctx_idx] = new_corpus.context_data[ctx_idx][list(docs)]
-    
-    
     
     return new_corpus
 
@@ -480,8 +478,9 @@ def naive_alignment(v1, v2, dist=None, dist_fn=JS_dist, debug=False):
 def compare(sample_v, v):
     sample_size = len(sample_v.labels)
 
-    print "{k}\t{N}\t{seed}\t{LL}\t{corpus_size}\t".format(k=sample_v.model.K, 
+    print "{k}\t{N}\t{seed}\t{span_seed}\t{LL}\t{corpus_size}\t".format(k=sample_v.model.K, 
         N=sample_size, seed=sample_v.model.seed, 
+        span_seed=v.model.seed,
         LL=sample_v.model.log_probs[-1][1],
         corpus_size=len(sample_v.corpus)),
 
@@ -522,9 +521,11 @@ def populate_parser(parser):
         help="Configuration file path")
     parser.add_argument('-k', type=int, required=True,
         help="Number of Topics")
-    
-    parser.add_argument('--self', type=int, default=1,
-        help="Number of Alternative Models")
+    parser.add_argument('--abort', action='store_true', dest='abort') 
+    parser.add_argument('-f', '--force', action='store_false', dest='abort') 
+    parser.set_defaults(abort=True)
+    parser.add_argument('--samples', type=int, default=100,
+        help="Number of Sample Models")
     parser.add_argument('--iter', type=int, default=200,
         help="Number of Iteratioins per training")
 
@@ -540,7 +541,6 @@ if __name__ == '__main__':
 
     # path variables
     path = config.get('main', 'path')
-    context_type = config.get('main', 'context_type')
     corpus_file = config.get('main', 'corpus_file')
 
     c = Corpus.load(corpus_file)
@@ -548,22 +548,34 @@ if __name__ == '__main__':
     ids = []
 
     from glob import iglob as glob
-    glob_path = args.conifg.replace('.ini', '.*')
+    glob_path = args.config.replace('.ini', '.*.ini')
     for config_path in glob(glob_path):
+        print "loading", config_path
         config = ConfigParser()
         config.read(config_path)
+        try: 
+            model_pattern = config.get('main', 'model_pattern')
+            context_type = config.get('main', 'context_type')
+            m = LdaCgsMulti.load(model_pattern.format(args.k))
+            v = LdaCgsViewer(c, m)
+            spanning_viewers.append(v)
+    
+            if not len(ids):
+                ids = v.corpus.view_metadata('book')['book_label']
+                print "{} total books".format(len(ids))
 
-        model_pattern = config.get('main', 'model_pattern')
-        m = LdaCgsMulti.load(model_pattern.format(args.k))
-        v = LdaCgsViewer(c, m)
-        spanning_viewers.append(v)
+        except NoOptionError:
+            if args.abort:
+                import sys
+                print "area not yet done training spanning models"
+                sys.exit()
+            else:
+                # if partial completion is allowed just move on to the
+                # next area.
+                pass
 
-        if not ids:
-            ids = v.corpus.view_metadata('book')['book_label']
-            print "{} total books".format(len(ids))
-
-
-    while True:
+    for i in range(args.samples):
+        # context_type = config.get('main', 'context_type')
         sample_size = randrange(int(len(ids)*0.1),int(1.0*len(ids)))
         sample_ids = random.sample(ids, sample_size) # see sample_size parameter at top
         sample_c = deep_subcorpus(sample_ids)
@@ -573,5 +585,5 @@ if __name__ == '__main__':
         sample_m.train(num_iter, verbose=0) # set num_iter at top
         sample_v = LdaCgsViewer(sample_c, sample_m)
 
-        for v in spanning_viwers:
+        for v in spanning_viewers:
             compare(sample_v, v)
