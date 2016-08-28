@@ -223,7 +223,7 @@ def model_stats(*viewers):
     """
     Prints a table of avg log likelihood and perplexity for each viewer.
     """
-    print "model", "k","seed", "tokens", "types", "avg-log-likelihood", "perplexity"
+    print "model", "k", "tokens", "types", "avg-log-likelihood", "perplexity"
     for i,v in enumerate(viewers):
         print "M{}".format(i), v.model.K, len(v.corpus.corpus), len(v.corpus.words), avg_log_likelihood(v), perplexity(v)
 
@@ -477,10 +477,18 @@ def naive_alignment(v1, v2, dist=None, dist_fn=JS_dist, debug=False):
 
 def compare(sample_v, v):
     sample_size = len(sample_v.labels)
+    try:
+        seed = sample_v.model.seed
+    except AttributeError:
+        seed = sample_v.model.seeds[0]
+    try:
+        span_seed = v.model.seed
+    except AttributeError:
+        span_seed = v.model.seeds[0]
 
     print "{k}\t{N}\t{seed}\t{span_seed}\t{LL}\t{corpus_size}\t".format(k=sample_v.model.K, 
-        N=sample_size, seed=sample_v.model.seed, 
-        span_seed=v.model.seed,
+        N=sample_size, seed=seed, 
+        span_seed=span_seed,
         LL=sample_v.model.log_probs[-1][1],
         corpus_size=len(sample_v.corpus)),
 
