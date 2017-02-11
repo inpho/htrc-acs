@@ -84,7 +84,7 @@ CONFIG_PATH = '/var/htrc-loc/config/'
 if not os.path.exists(CONFIG_PATH):
     os.makedirs(CONFIG_PATH)
 
-for item in loader.keys()[:12]:
+for item in loader.keys()[85:95]:
     time.sleep(1)
     cls = item.rsplit('/', 1)[-1]
     try:
