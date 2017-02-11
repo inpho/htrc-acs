@@ -172,6 +172,7 @@ def pearson(v1, v2, context_type):
 def spearman(v1, v2, context_type):
     context_label = context_type + '_label'
     ids, d1, d2 = doc_overlap(v1, v2, context_type)
+    print len(ids), len(d1), len(d2)
 
     r_all = []
     for id in ids:
@@ -477,10 +478,12 @@ def naive_alignment(v1, v2, dist=None, dist_fn=JS_dist, debug=False):
 
 def compare(sample_v, v):
     sample_size = len(sample_v.labels)
+
     try:
         seed = sample_v.model.seed
     except AttributeError:
         seed = sample_v.model.seeds[0]
+
     try:
         span_seed = v.model.seed
     except AttributeError:
@@ -518,11 +521,14 @@ def compare(sample_v, v):
 
     # Calculate Spearman, Pearson, top-10 recall, and top-10-percent recall
     # for each document - more of an IR-related search
+    """
     print "{spearman}\t{pearson}\t{recall}\t{recall10p}".format(
         spearman=spearman(sample_v, v,'book'),
         pearson=pearson(sample_v, v, 'book'),
         recall=recall(sample_v, v, 'book', N=10),
-        recall10p=recall(sample_v,v,'book', N=int(np.floor(0.1*sample_size))))
+        recall10p=recall(sample_v,v,'book', N=int(np.floor(0.1*sample_size)))),
+    """
+    print "\t"
 
 def populate_parser(parser):
     parser.add_argument('config', type=lambda x: is_valid_filepath(parser, x),
@@ -593,5 +599,5 @@ if __name__ == '__main__':
         sample_m.train(num_iter, verbose=0) # set num_iter at top
         sample_v = LdaCgsViewer(sample_c, sample_m)
 
-        for v in spanning_viewers:
-            compare(sample_v, v)
+        for v2 in spanning_viewers:
+            compare(sample_v, v2)
