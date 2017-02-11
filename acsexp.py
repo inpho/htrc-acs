@@ -476,7 +476,7 @@ def naive_alignment(v1, v2, dist=None, dist_fn=JS_dist, debug=False):
     
     return alignment
 
-def compare(sample_v, v):
+def compare(sample_v, v, filename=None):
     sample_size = len(sample_v.labels)
 
     try:
@@ -489,11 +489,15 @@ def compare(sample_v, v):
     except AttributeError:
         span_seed = v.model.seeds[0]
 
-    print "{k}\t{N}\t{seed}\t{span_seed}\t{LL}\t{corpus_size}\t".format(k=sample_v.model.K, 
+    log_line = ''
+    header_line = ''
+
+    header_line = ['k', 'N', 'seed', 'span_seed', 'LL', 'corpus_size']
+    log_line += "{k}\t{N}\t{seed}\t{span_seed}\t{LL}\t{corpus_size}\t".format(k=sample_v.model.K, 
         N=sample_size, seed=seed, 
         span_seed=span_seed,
         LL=sample_v.model.log_probs[-1][1],
-        corpus_size=len(sample_v.corpus)),
+        corpus_size=len(sample_v.corpus))
 
     # compute similarity on topic-word matrix - given a topic, what is its
     # distribution over words?
@@ -502,10 +506,11 @@ def compare(sample_v, v):
     naive = naive_alignment(sample_v, v, dist=dist)
     m1, m2 = zip(*basic)
     
-    print "{fitness}\t{naive_fitness}\t{overlap}\t".format(
+    header_line.extend(['phi_fitness', 'phi_naive_fitness', 'phi_overlap'])
+    log_line += "{fitness}\t{naive_fitness}\t{overlap}\t".format(
     	fitness=alignment_fitness(basic, sample_v, v, dist=dist),
     	naive_fitness=alignment_fitness(naive, sample_v, v, dist=dist),
-    	overlap=len(set(m2))),
+    	overlap=len(set(m2)))
 
     # Compute similarity on topic-document matrix - given a topic, what is its
     # distribution over documents?
@@ -514,10 +519,11 @@ def compare(sample_v, v):
     naive = naive_alignment(sample_v, v, dist=dist)
     m1, m2 = zip(*basic)
     
-    print "{fitness}\t{naive_fitness}\t{overlap}\t".format(
+    header_line.extend(['theta_fitness', 'theta_naive_fitness', 'theta_overlap'])
+    log_line += "{fitness}\t{naive_fitness}\t{overlap}\t".format(
     	fitness=alignment_fitness(basic, sample_v, v, dist=dist),
     	naive_fitness=alignment_fitness(naive, sample_v, v, dist=dist),
-    	overlap=len(set(m2))),
+    	overlap=len(set(m2)))
 
     # Calculate Spearman, Pearson, top-10 recall, and top-10-percent recall
     # for each document - more of an IR-related search
@@ -528,7 +534,18 @@ def compare(sample_v, v):
         recall=recall(sample_v, v, 'book', N=10),
         recall10p=recall(sample_v,v,'book', N=int(np.floor(0.1*sample_size)))),
     """
-    print "\t"
+
+    header_line = '\t'.join(header_line)
+
+    if filename is None:
+        print log_line
+    if filename is not None:
+        write_header = not os.path.exists(filename)
+            
+        with open(filename, 'a') as logfile:
+            if write_header:
+                logfile.write(header_line + '\n')
+            logfile.write(log_line + '\n')
 
 def populate_parser(parser):
     parser.add_argument('config', type=lambda x: is_valid_filepath(parser, x),
@@ -588,6 +605,9 @@ if __name__ == '__main__':
                 # next area.
                 pass
 
+    
+    area = os.path.basename(args.config)
+    log_filename = "{area}.{k}.results.log".format(k=args.k, area=area)
     for i in range(args.samples):
         # context_type = config.get('main', 'context_type')
         sample_size = randrange(int(len(ids)*0.1),int(1.0*len(ids)))
@@ -595,9 +615,9 @@ if __name__ == '__main__':
         sample_c = deep_subcorpus(sample_ids)
         
         num_iter = args.iter
-        sample_m = LdaCgsSeq(sample_c, 'book', args.k) # set num_topics parameter at top
+        sample_m = LdaCgsMulti(sample_c, 'book', args.k, n_proc=8) # set num_topics parameter at top
         sample_m.train(num_iter, verbose=0) # set num_iter at top
         sample_v = LdaCgsViewer(sample_c, sample_m)
 
         for v2 in spanning_viewers:
-            compare(sample_v, v2)
+            compare(sample_v, v2, filename=log_filename)
