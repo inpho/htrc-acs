@@ -32,6 +32,10 @@ def is_valid_filepath(parser, arg):
 # In[41]:
 
 def deep_subcorpus(labels):
+    bookssss = v.corpus.view_metadata('book')['book_label']
+    print "{} total books".format(len(bookssss))
+    if not all(d in bookssss for d in labels):
+        raise ValueError("There is a book missing!")
     # resolve labels to indexes
     docs_labels = [v._res_doc_type(d) for d in labels]
     docs, labels = zip(*docs_labels)
@@ -579,7 +583,8 @@ if __name__ == '__main__':
     ids = []
 
     from glob import iglob as glob
-    glob_path = args.config.replace('.ini', '.*.ini')
+    area = os.path.basename(args.config)[:-4]
+    glob_path = args.config.replace('.ini', '/*.ini')
     for config_path in glob(glob_path):
         print "loading", config_path
         config = ConfigParser()
@@ -587,6 +592,8 @@ if __name__ == '__main__':
         try: 
             model_pattern = config.get('main', 'model_pattern')
             context_type = config.get('main', 'context_type')
+            if corpus_file != config.get('main', 'corpus_file'):
+                raise ValueError('corpus_file not equal for' + config_path)
             m = LdaCgsMulti.load(model_pattern.format(args.k))
             v = LdaCgsViewer(c, m)
             spanning_viewers.append(v)
@@ -606,14 +613,15 @@ if __name__ == '__main__':
                 pass
 
     
-    area = os.path.basename(args.config)
-    log_filename = "{area}.{k}.results.log".format(k=args.k, area=area)
+    if not os.path.exists('/var/htrc-loc/logs'):
+        os.makedirs('/var/htrc-loc/logs')
+    log_filename = "/var/htrc-loc/logs/{area}.results.log".format(k=args.k, area=area)
     for i in range(args.samples):
         # context_type = config.get('main', 'context_type')
         sample_size = randrange(int(len(ids)*0.1),int(1.0*len(ids)))
         sample_ids = random.sample(ids, sample_size) # see sample_size parameter at top
         sample_c = deep_subcorpus(sample_ids)
-        
+
         num_iter = args.iter
         sample_m = LdaCgsMulti(sample_c, 'book', args.k, n_proc=8) # set num_topics parameter at top
         sample_m.train(num_iter, verbose=0) # set num_iter at top
