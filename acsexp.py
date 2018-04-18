@@ -510,11 +510,14 @@ def compare(sample_v, v):
 
     # Calculate Spearman, Pearson, top-10 recall, and top-10-percent recall
     # for each document - more of an IR-related search
+    """
     print "{spearman}\t{pearson}\t{recall}\t{recall10p}".format(
         spearman=spearman(sample_v, v,'book'),
         pearson=pearson(sample_v, v, 'book'),
         recall=recall(sample_v, v, 'book', N=10),
         recall10p=recall(sample_v,v,'book', N=int(np.floor(0.1*sample_size))))
+    """
+    print " "
 
 def populate_parser(parser):
     parser.add_argument('config', type=lambda x: is_valid_filepath(parser, x),
