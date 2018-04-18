@@ -32,6 +32,10 @@ def is_valid_filepath(parser, arg):
 # In[41]:
 
 def deep_subcorpus(labels):
+    bookssss = v.corpus.view_metadata('book')['book_label']
+    print "{} total books".format(len(bookssss))
+    if not all(d in bookssss for d in labels):
+        raise ValueError("There is a book missing!")
     # resolve labels to indexes
     docs_labels = [v._res_doc_type(d) for d in labels]
     docs, labels = zip(*docs_labels)
@@ -172,6 +176,7 @@ def pearson(v1, v2, context_type):
 def spearman(v1, v2, context_type):
     context_label = context_type + '_label'
     ids, d1, d2 = doc_overlap(v1, v2, context_type)
+    print len(ids), len(d1), len(d2)
 
     r_all = []
     for id in ids:
@@ -223,7 +228,7 @@ def model_stats(*viewers):
     """
     Prints a table of avg log likelihood and perplexity for each viewer.
     """
-    print "model", "k","seed", "tokens", "types", "avg-log-likelihood", "perplexity"
+    print "model", "k", "tokens", "types", "avg-log-likelihood", "perplexity"
     for i,v in enumerate(viewers):
         print "M{}".format(i), v.model.K, len(v.corpus.corpus), len(v.corpus.words), avg_log_likelihood(v), perplexity(v)
 
@@ -475,14 +480,28 @@ def naive_alignment(v1, v2, dist=None, dist_fn=JS_dist, debug=False):
     
     return alignment
 
-def compare(sample_v, v):
+def compare(sample_v, v, filename=None):
     sample_size = len(sample_v.labels)
 
-    print "{k}\t{N}\t{seed}\t{span_seed}\t{LL}\t{corpus_size}\t".format(k=sample_v.model.K, 
-        N=sample_size, seed=sample_v.model.seed, 
-        span_seed=v.model.seed,
+    try:
+        seed = sample_v.model.seed
+    except AttributeError:
+        seed = sample_v.model.seeds[0]
+
+    try:
+        span_seed = v.model.seed
+    except AttributeError:
+        span_seed = v.model.seeds[0]
+
+    log_line = ''
+    header_line = ''
+
+    header_line = ['k', 'N', 'seed', 'span_seed', 'LL', 'corpus_size']
+    log_line += "{k}\t{N}\t{seed}\t{span_seed}\t{LL}\t{corpus_size}\t".format(k=sample_v.model.K, 
+        N=sample_size, seed=seed, 
+        span_seed=span_seed,
         LL=sample_v.model.log_probs[-1][1],
-        corpus_size=len(sample_v.corpus)),
+        corpus_size=len(sample_v.corpus))
 
     # compute similarity on topic-word matrix - given a topic, what is its
     # distribution over words?
@@ -491,10 +510,11 @@ def compare(sample_v, v):
     naive = naive_alignment(sample_v, v, dist=dist)
     m1, m2 = zip(*basic)
     
-    print "{fitness}\t{naive_fitness}\t{overlap}\t".format(
+    header_line.extend(['phi_fitness', 'phi_naive_fitness', 'phi_overlap'])
+    log_line += "{fitness}\t{naive_fitness}\t{overlap}\t".format(
     	fitness=alignment_fitness(basic, sample_v, v, dist=dist),
     	naive_fitness=alignment_fitness(naive, sample_v, v, dist=dist),
-    	overlap=len(set(m2))),
+    	overlap=len(set(m2)))
 
     # Compute similarity on topic-document matrix - given a topic, what is its
     # distribution over documents?
@@ -503,10 +523,11 @@ def compare(sample_v, v):
     naive = naive_alignment(sample_v, v, dist=dist)
     m1, m2 = zip(*basic)
     
-    print "{fitness}\t{naive_fitness}\t{overlap}\t".format(
+    header_line.extend(['theta_fitness', 'theta_naive_fitness', 'theta_overlap'])
+    log_line += "{fitness}\t{naive_fitness}\t{overlap}\t".format(
     	fitness=alignment_fitness(basic, sample_v, v, dist=dist),
     	naive_fitness=alignment_fitness(naive, sample_v, v, dist=dist),
-    	overlap=len(set(m2))),
+    	overlap=len(set(m2)))
 
     # Calculate Spearman, Pearson, top-10 recall, and top-10-percent recall
     # for each document - more of an IR-related search
@@ -518,6 +539,18 @@ def compare(sample_v, v):
         recall10p=recall(sample_v,v,'book', N=int(np.floor(0.1*sample_size))))
     """
     print " "
+
+    header_line = '\t'.join(header_line)
+
+    if filename is None:
+        print log_line
+    if filename is not None:
+        write_header = not os.path.exists(filename)
+            
+        with open(filename, 'a') as logfile:
+            if write_header:
+                logfile.write(header_line + '\n')
+            logfile.write(log_line + '\n')
 
 def populate_parser(parser):
     parser.add_argument('config', type=lambda x: is_valid_filepath(parser, x),
@@ -551,7 +584,8 @@ if __name__ == '__main__':
     ids = []
 
     from glob import iglob as glob
-    glob_path = args.config.replace('.ini', '.*.ini')
+    area = os.path.basename(args.config)[:-4]
+    glob_path = args.config.replace('.ini', '/*.ini')
     for config_path in glob(glob_path):
         print "loading", config_path
         config = ConfigParser()
@@ -559,6 +593,8 @@ if __name__ == '__main__':
         try: 
             model_pattern = config.get('main', 'model_pattern')
             context_type = config.get('main', 'context_type')
+            if corpus_file != config.get('main', 'corpus_file'):
+                raise ValueError('corpus_file not equal for' + config_path)
             m = LdaCgsMulti.load(model_pattern.format(args.k))
             v = LdaCgsViewer(c, m)
             spanning_viewers.append(v)
@@ -577,16 +613,20 @@ if __name__ == '__main__':
                 # next area.
                 pass
 
+    
+    if not os.path.exists('/var/htrc-loc/logs'):
+        os.makedirs('/var/htrc-loc/logs')
+    log_filename = "/var/htrc-loc/logs/{area}.results.log".format(k=args.k, area=area)
     for i in range(args.samples):
         # context_type = config.get('main', 'context_type')
         sample_size = randrange(int(len(ids)*0.1),int(1.0*len(ids)))
         sample_ids = random.sample(ids, sample_size) # see sample_size parameter at top
         sample_c = deep_subcorpus(sample_ids)
-        
+
         num_iter = args.iter
-        sample_m = LdaCgsSeq(sample_c, 'book', args.k) # set num_topics parameter at top
+        sample_m = LdaCgsMulti(sample_c, 'book', args.k, n_proc=8) # set num_topics parameter at top
         sample_m.train(num_iter, verbose=0) # set num_iter at top
         sample_v = LdaCgsViewer(sample_c, sample_m)
 
-        for v in spanning_viewers:
-            compare(sample_v, v)
+        for v2 in spanning_viewers:
+            compare(sample_v, v2, filename=log_filename)
