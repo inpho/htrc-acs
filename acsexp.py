@@ -564,6 +564,8 @@ def populate_parser(parser):
         help="Number of Sample Models")
     parser.add_argument('--iter', type=int, default=200,
         help="Number of Iteratioins per training")
+    parser.add_argument('--log-dir', default='/var/htrc-loc/logs/',
+        help="Output directory")
 
 # In[48]:
 if __name__ == '__main__':
@@ -584,8 +586,8 @@ if __name__ == '__main__':
     ids = []
 
     from glob import iglob as glob
-    area = os.path.basename(args.config)[:-4]
-    glob_path = args.config.replace('.ini', '/*.ini')
+    area = os.path.basename(args.config).replace('.htids.txt.ini', '')
+    glob_path = os.path.dirname(args.config) + '/datasets/' + area + '/*.ini'
     for config_path in glob(glob_path):
         print "loading", config_path
         config = ConfigParser()
@@ -613,10 +615,9 @@ if __name__ == '__main__':
                 # next area.
                 pass
 
-    
-    if not os.path.exists('/var/htrc-loc/logs'):
-        os.makedirs('/var/htrc-loc/logs')
-    log_filename = "/var/htrc-loc/logs/{area}.results.log".format(k=args.k, area=area)
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
+    log_filename = "{dir}/{area}.results.log".format(dir=args.log_dir, k=args.k, area=area)
     for i in range(args.samples):
         # context_type = config.get('main', 'context_type')
         sample_size = randrange(int(len(ids)*0.1),int(1.0*len(ids)))
