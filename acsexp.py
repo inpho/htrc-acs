@@ -503,9 +503,9 @@ def compare(sample_v, v, filename=None):
     log_line = ''
     header_line = ''
 
-    header_line = ['k', 'N', 'seed', 'span_seed', 'LL', 'corpus_size']
-    log_line += "{k}\t{N}\t{seed}\t{span_seed}\t{LL}\t{corpus_size}\t".format(k=sample_v.model.K, 
-        N=sample_size, seed=seed, 
+    header_line = ['k', 'iterations', 'N', 'seed', 'span_seed', 'LL', 'corpus_size']
+    log_line += "{k}\t{iter}\t{N}\t{seed}\t{span_seed}\t{LL}\t{corpus_size}\t".format(k=sample_v.model.K, 
+        N=sample_size, seed=seed, iter=sample_v.model.iteration,
         span_seed=span_seed,
         LL=sample_v.model.log_probs[-1][1],
         corpus_size=len(sample_v.corpus))
