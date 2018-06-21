@@ -1,3 +1,5 @@
+from __future__ import division
+from __future__ import print_function
 
 # coding: utf-8
 
@@ -6,6 +8,11 @@
 
 # In[4]:
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import range
 from vsm import *
 import numpy as np
 import itertools
@@ -18,7 +25,7 @@ import random
 
 
 import os.path
-from ConfigParser import ConfigParser, NoOptionError
+from configparser import ConfigParser, NoOptionError
 
 def is_valid_filepath(parser, arg):
     if not os.path.exists(arg):
@@ -33,12 +40,12 @@ def is_valid_filepath(parser, arg):
 
 def deep_subcorpus(labels):
     bookssss = v.corpus.view_metadata('book')['book_label']
-    print "{} total books".format(len(bookssss))
+    print("{} total books".format(len(bookssss)))
     if not all(d in bookssss for d in labels):
         raise ValueError("There is a book missing!")
     # resolve labels to indexes
     docs_labels = [v._res_doc_type(d) for d in labels]
-    docs, labels = zip(*docs_labels)
+    docs, labels = list(zip(*docs_labels))
     
     # get lengths of all contexts
     lens = np.array([len(ctx) for ctx in v.corpus.view_contexts('book')])
@@ -47,7 +54,7 @@ def deep_subcorpus(labels):
     ctx_idx = v.corpus.context_types.index(v.model.context_type)
     
     # get original slices
-    slice_idxs = [range(s.start,s.stop) for i, s in enumerate(v.corpus.view_contexts('book',as_slices=True)) 
+    slice_idxs = [list(range(s.start,s.stop)) for i, s in enumerate(v.corpus.view_contexts('book',as_slices=True)) 
                       if i in docs]
     
     new_corpus = copy.deepcopy(v.corpus)
@@ -94,10 +101,10 @@ def topic_overlap(v1,v2):
     t2 = np.array(v2.topics())['value']
     
     if v1.corpus.words_int != v2.corpus.words_int:
-        print "corpus.words_int different, aligning words"
+        print("corpus.words_int different, aligning words")
         vocab = vocab.intersection(v2.corpus.words)
-        print "preserving {}% of words in v1; ".format(100 * len(vocab) / float(len(v1.corpus.words))),
-        print "{}% of words in v2 ".format(100 * len(vocab) / float(len(v2.corpus.words)))
+        print("preserving {}% of words in v1; ".format(100 * len(vocab) / float(len(v1.corpus.words))), end=' ')
+        print("{}% of words in v2 ".format(100 * len(vocab) / float(len(v2.corpus.words))))
         
         t1 = t1[:,np.array([v1.corpus.words_int[word] for word in vocab])]
         t1 = (t1.T / t1.sum(axis=1)).T
@@ -134,8 +141,8 @@ def doc_overlap(v1,v2, context_type, norm=True):
 
     # renormalize so that each topic is now a document probability
     if norm:
-        d1 = (d1 / d1.sum(axis=0))
-        d2 = (d2 / d2.sum(axis=0))
+        d1 = d1 / d1.sum(axis=0)
+        d2 = d2 / d2.sum(axis=0)
     
     # original d1 and d2 are doc_topic, switch to topic_doc
     return (ids, d1.T, d2.T)
@@ -171,12 +178,12 @@ def pearson(v1, v2, context_type):
         r, pval = pearsonr(sim1['value'], sim2['value'])
         r_all.append(r)
     
-    return sum(r_all)/len(r_all)
+    return sum(r_all) / len(r_all)
 
 def spearman(v1, v2, context_type):
     context_label = context_type + '_label'
     ids, d1, d2 = doc_overlap(v1, v2, context_type)
-    print len(ids), len(d1), len(d2)
+    print(len(ids), len(d1), len(d2))
 
     r_all = []
     for id in ids:
@@ -193,7 +200,7 @@ def spearman(v1, v2, context_type):
         r, pval = spearmanr(rankdata(sim1['value']), rankdata(sim2['value']))
         r_all.append(r)
 
-    return sum(r_all)/len(r_all)
+    return sum(r_all) / len(r_all)
 
 def recall(v1,v2, context_type,N=10):
     context_label = context_type + '_label'
@@ -214,7 +221,7 @@ def recall(v1,v2, context_type,N=10):
         r = np.where(np.in1d(sim1, sim2))[0].size / float(N)
         r_all.append(r)
     
-    return sum(r_all)/len(r_all)
+    return sum(r_all) / len(r_all)
 
 def avg_log_likelihood(viewer):
     """ Calculates the average log likelihood per token. """
@@ -228,9 +235,9 @@ def model_stats(*viewers):
     """
     Prints a table of avg log likelihood and perplexity for each viewer.
     """
-    print "model", "k", "tokens", "types", "avg-log-likelihood", "perplexity"
+    print("model", "k", "tokens", "types", "avg-log-likelihood", "perplexity")
     for i,v in enumerate(viewers):
-        print "M{}".format(i), v.model.K, len(v.corpus.corpus), len(v.corpus.words), avg_log_likelihood(v), perplexity(v)
+        print("M{}".format(i), v.model.K, len(v.corpus.corpus), len(v.corpus.words), avg_log_likelihood(v), perplexity(v))
 
 def create_dendogram(D, xdim=None, method='ward'):
     """
@@ -289,7 +296,7 @@ def plot_dendogram(D, Z, xdim,ydim, dist=None, filter_axis=False, show_self=Fals
     
     if alignment is not None:
         axmatrix.autoscale(False)
-        ys,xs = zip(*alignment)
+        ys,xs = list(zip(*alignment))
         xindex = index[index >= xdim] - xdim
         yindex = index[index < xdim]
         
@@ -339,7 +346,7 @@ def plot_topic_similarity(v1, v2, dist=None, dist_fn=JS_dist, sorted=True, align
         if alignment is not None:
             ax = gca()
             ax.autoscale(False)
-            ys,xs = zip(*alignment)
+            ys,xs = list(zip(*alignment))
             scatter(xs,ys, marker='x', s=200, color='w', lw=5)
         
         # label data
@@ -393,7 +400,7 @@ def plot_alignment(v1, v2, dist, alignment=None, fn_name=None):
         alpha = 1.0
     else:
         alpha = np.zeros(dist.shape)
-        alpha[zip(*alignment)] = 1
+        alpha[list(zip(*alignment))] = 1
     
     Xs[:,:,3] = alpha
     
@@ -435,7 +442,7 @@ def basic_alignment(v1, v2, dist=None, dist_fn=JS_dist, debug=False):
         closest = topic.argsort()[0]
         alignment.append((i, closest))
         if debug:
-            print i, closest, topic[closest]
+            print(i, closest, topic[closest])
     
     return alignment
 
@@ -466,13 +473,13 @@ def naive_alignment(v1, v2, dist=None, dist_fn=JS_dist, debug=False):
         topic_idx = 0
         closest = topic.argsort()[topic_idx]
         if debug:
-            print i, closest, topic[closest]
+            print(i, closest, topic[closest])
         
         while closest in aligned:
             topic_idx += 1
             closest = topic.argsort()[topic_idx]
             if debug:
-                print i, closest, topic[closest]
+                print(i, closest, topic[closest])
         
         
         aligned.append(closest)
@@ -496,9 +503,9 @@ def compare(sample_v, v, filename=None):
     log_line = ''
     header_line = ''
 
-    header_line = ['k', 'N', 'seed', 'span_seed', 'LL', 'corpus_size']
-    log_line += "{k}\t{N}\t{seed}\t{span_seed}\t{LL}\t{corpus_size}\t".format(k=sample_v.model.K, 
-        N=sample_size, seed=seed, 
+    header_line = ['k', 'iterations', 'N', 'seed', 'span_seed', 'LL', 'corpus_size']
+    log_line += "{k}\t{iter}\t{N}\t{seed}\t{span_seed}\t{LL}\t{corpus_size}\t".format(k=sample_v.model.K, 
+        N=sample_size, seed=seed, iter=sample_v.model.iteration,
         span_seed=span_seed,
         LL=sample_v.model.log_probs[-1][1],
         corpus_size=len(sample_v.corpus))
@@ -508,7 +515,7 @@ def compare(sample_v, v, filename=None):
     dist = model_dist(sample_v, v)
     basic = basic_alignment(sample_v, v, dist=dist)
     naive = naive_alignment(sample_v, v, dist=dist)
-    m1, m2 = zip(*basic)
+    m1, m2 = list(zip(*basic))
     
     header_line.extend(['phi_fitness', 'phi_naive_fitness', 'phi_overlap'])
     log_line += "{fitness}\t{naive_fitness}\t{overlap}\t".format(
@@ -521,7 +528,7 @@ def compare(sample_v, v, filename=None):
     dist = model_doc_dist(sample_v, v, 'book')
     basic = basic_alignment(sample_v, v, dist=dist)
     naive = naive_alignment(sample_v, v, dist=dist)
-    m1, m2 = zip(*basic)
+    m1, m2 = list(zip(*basic))
     
     header_line.extend(['theta_fitness', 'theta_naive_fitness', 'theta_overlap'])
     log_line += "{fitness}\t{naive_fitness}\t{overlap}\t".format(
@@ -538,12 +545,12 @@ def compare(sample_v, v, filename=None):
         recall=recall(sample_v, v, 'book', N=10),
         recall10p=recall(sample_v,v,'book', N=int(np.floor(0.1*sample_size))))
     """
-    print " "
+    print(" ")
 
     header_line = '\t'.join(header_line)
 
     if filename is None:
-        print log_line
+        print(log_line)
     if filename is not None:
         write_header = not os.path.exists(filename)
             
@@ -564,6 +571,8 @@ def populate_parser(parser):
         help="Number of Sample Models")
     parser.add_argument('--iter', type=int, default=200,
         help="Number of Iteratioins per training")
+    parser.add_argument('--log-dir', default='/var/htrc-loc/logs/',
+        help="Output directory")
 
 # In[48]:
 if __name__ == '__main__':
@@ -584,10 +593,10 @@ if __name__ == '__main__':
     ids = []
 
     from glob import iglob as glob
-    area = os.path.basename(args.config)[:-4]
-    glob_path = args.config.replace('.ini', '/*.ini')
+    area = os.path.basename(args.config).replace('.htids.txt.ini', '')
+    glob_path = os.path.dirname(args.config) + '/datasets/' + area + '/*.ini'
     for config_path in glob(glob_path):
-        print "loading", config_path
+        print("loading", config_path)
         config = ConfigParser()
         config.read(config_path)
         try: 
@@ -600,23 +609,22 @@ if __name__ == '__main__':
             spanning_viewers.append(v)
     
             if not len(ids):
-                ids = v.corpus.view_metadata('book')['book_label']
-                print "{} total books".format(len(ids))
+                ids = v.corpus.view_metadata('book')['book_label'].tolist()
+                print("{} total books".format(len(ids)))
 
         except NoOptionError:
             if args.abort:
                 import sys
-                print "area not yet done training spanning models"
+                print("area not yet done training spanning models")
                 sys.exit()
             else:
                 # if partial completion is allowed just move on to the
                 # next area.
                 pass
 
-    
-    if not os.path.exists('/var/htrc-loc/logs'):
-        os.makedirs('/var/htrc-loc/logs')
-    log_filename = "/var/htrc-loc/logs/{area}.results.log".format(k=args.k, area=area)
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
+    log_filename = "{dir}/{area}.results.log".format(dir=args.log_dir, k=args.k, area=area)
     for i in range(args.samples):
         # context_type = config.get('main', 'context_type')
         sample_size = randrange(int(len(ids)*0.1),int(1.0*len(ids)))
