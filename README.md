@@ -27,3 +27,18 @@ This repository contains code for the 2015 HathiTrust Reseach Center (HTRC) Adva
   - **recall** -- Percentage overlap (should always be 1.0)
   - **top10recall** -- Percentage overlap of similar docs in top 10 percent
 
+
+## Datasets
+htrc-loc-graph/marcrecs.py	http://www.loc.gov/cds/products/product.php?productID=5	lccn-oclc-lcco-alignment.tsv
+htrc-loc-graph/htrc.py	https://www.hathitrust.org/hathifiles	htid-htrecord-oclc-lccn-alignment.tsv
+htrc-loc-graphlcco_titles.py	data/lcco.rdf	lcco_titles.tsv
+htrc-acs/import.sql	lccn-oclc-lcco-alignment.tsv;htid-htrecord-oclc-lccn-alignment.tsv	alignment.sqlite
+htrc-acs/align.py
+
+## Runtime
+topicexplorer init $AREA --htrc --name "$(grep lcco_titles.py $AREA | awk '{print $1}')"
+topicexplorer prep $AREA 
+topicexplorer train $AREA -k 20 40 60 80 --iter 500 -p 24
+
+htrc-acs/acsexp.py config_path -k $0 --samples 100 --iter 200
+
