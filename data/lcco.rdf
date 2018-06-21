@@ -6496,8 +6496,6 @@
   </rdf:Description>
   <rdf:Description rdf:about="http://inkdroid.org/lcco/LE3-78">
     <skos:broader rdf:resource="http://inkdroid.org/lcco/L"/>
-    <skos:broader rdf:resource="http://inkdroid.org/lcco/LE3-78"/>
-    <skos:narrower rdf:resource="http://inkdroid.org/lcco/LE3-78"/>
     <skos:narrower rdf:resource="http://inkdroid.org/lcco/LE3-5"/>
     <skos:narrower rdf:resource="http://inkdroid.org/lcco/LE7-9"/>
     <skos:narrower rdf:resource="http://inkdroid.org/lcco/LE11-13"/>
